@@ -27,7 +27,6 @@
   .preview-img { max-width: 100%; border-radius: 8px; margin-top: 8px; display: none; }
   .detail-img { width: 100%; border-radius: 10px; margin: 10px 0; }
   .detail-text { font-size: 15px; line-height: 1.6; white-space: pre-wrap; margin: 8px 0; }
-  .detail-song { font-size: 14px; color: #2f80ed; word-break: break-all; }
 </style>
 </head>
 <body>
@@ -37,55 +36,69 @@
   <button id="importBtn">导入数据</button>
 </div>
 
+<!-- 添加表单 -->
 <div class="modal-mask" id="formMask">
   <div class="modal">
     <h3 id="formTitle">添加记忆</h3>
-    <label>标题</label><input type="text" id="fTitle">
-    <label>日记</label><textarea id="fText"></textarea>
+    <label>标题</label><input type="text" id="fTitle" placeholder="给这里起个名字">
+    <label>日记</label><textarea id="fText" placeholder="写下当时的心情..."></textarea>
     <label>照片</label><input type="file" id="fPhoto" accept="image/*">< img class="preview-img" id="fPreview">
-    <label>歌曲名</label><input type="text" id="fSongName">
-    <label>歌曲链接</label><input type="text" id="fSongUrl">
+    <label>歌曲名</label><input type="text" id="fSongName" placeholder="歌名">
+    <label>歌曲链接</label><input type="text" id="fSongUrl" placeholder="https://...">
     <div class="btns"><button class="btn-cancel" id="fCancel">取消</button><button class="btn-save" id="fSave">保存</button></div>
   </div>
 </div>
 
+<!-- 详情弹窗 -->
 <div class="modal-mask" id="detailMask">
   <div class="modal">
     <h3 id="dTitle"></h3><div class="detail-text" id="dText"></div>
-    < img class="detail-img" id="dImg" style="display:none"><div class="detail-song" id="dSong"></div>
+    < img class="detail-img" id="dImg" style="display:none"><div style="font-size:14px;color:#2f80ed;" id="dSong"></div>
     <div class="btns"><button class="btn-danger" id="dDelete">删除</button><button class="btn-cancel" id="dClose">关闭</button></div>
   </div>
 </div>
 
 <script src="https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
+// ==== 核心变量 ====
 let map, memories = [], markers = [], editingId = null, currentLatLng = null, pendingPhoto = null, viewingId = null;
 
-// 1. 初始化地图（直接执行，绝不卡顿）
+// ==== 1. 初始化地图 ====
 map = L.map('map').setView([31.23, 121.47], 4);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-map.on('click', function(e) { openForm(e.latlng, null); });
+
+// 【核心修复：绑定点击事件】
+map.on('click', function(e) { 
+  openForm(e.latlng, null); 
+});
 
 function renderMarkers() {
   markers.forEach(m => map.removeLayer(m)); markers = [];
   memories.forEach(mem => {
     const marker = L.marker([mem.lat, mem.lng]).addTo(map);
-    marker.on('click', function(e) { L.DomEvent.stopPropagation(e); openDetail(mem.id); });
+    marker.on('click', function(e) { 
+      L.DomEvent.stopPropagation(e); 
+      openDetail(mem.id); 
+    });
     markers.push(marker);
   });
 }
 
-// 2. 界面逻辑
+// ==== 2. 界面操作 ====
 function openForm(latlng, mem) {
-  editingId = mem ? mem.id : null; currentLatLng = latlng || (mem ? { lat: mem.lat, lng: mem.lng } : null);
+  editingId = mem ? mem.id : null; 
+  currentLatLng = latlng || (mem ? { lat: mem.lat, lng: mem.lng } : null);
   pendingPhoto = mem ? (mem.photo || null) : null;
-  document.getElementById('formTitle').textContent = mem ? '编辑' : '添加';
+  
+  document.getElementById('formTitle').textContent = mem ? '编辑记忆' : '添加记忆';
   document.getElementById('fTitle').value = mem ? (mem.title || '') : '';
   document.getElementById('fText').value = mem ? (mem.text || '') : '';
   document.getElementById('fSongName').value = mem ? (mem.songName || '') : '';
   document.getElementById('fSongUrl').value = mem ? (mem.songUrl || '') : '';
+  
   const preview = document.getElementById('fPreview');
-  if (pendingPhoto) { preview.src = pendingPhoto; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
+  if (pendingPhoto) { preview.src = pendingPhoto; preview.style.display = 'block'; } 
+  else { preview.style.display = 'none'; }
   document.getElementById('formMask').classList.add('show');
 }
 
@@ -96,17 +109,22 @@ function openDetail(id) {
   document.getElementById('dTitle').textContent = mem.title || '无标题';
   document.getElementById('dText').textContent = mem.text || '';
   const img = document.getElementById('dImg');
-  if (mem.photo) { img.src = mem.photo; img.style.display = 'block'; } else { img.style.display = 'none'; }
+  if (mem.photo) { img.src = mem.photo; img.style.display = 'block'; } 
+  else { img.style.display = 'none'; }
   document.getElementById('dSong').innerHTML = mem.songName ? ('🎵 ' + mem.songName) : '';
   document.getElementById('detailMask').classList.add('show');
 }
 function closeDetail() { document.getElementById('detailMask').classList.remove('show'); }
 
-// 3. 事件绑定
+// ==== 3. 按钮交互 ====
 document.getElementById('fPhoto').addEventListener('change', function(e) {
   const file = e.target.files[0]; if (!file) return;
   const reader = new FileReader();
-  reader.onload = ev => { pendingPhoto = ev.target.result; document.getElementById('fPreview').src = pendingPhoto; document.getElementById('fPreview').style.display = 'block'; };
+  reader.onload = ev => { 
+    pendingPhoto = ev.target.result; 
+    document.getElementById('fPreview').src = pendingPhoto; 
+    document.getElementById('fPreview').style.display = 'block'; 
+  };
   reader.readAsDataURL(file);
 });
 
@@ -121,9 +139,17 @@ document.getElementById('fSave').addEventListener('click', function() {
     mem.songName = document.getElementById('fSongName').value.trim();
     mem.songUrl = document.getElementById('fSongUrl').value.trim();
   } else {
-    memories.push({ id: Date.now().toString(), lat: currentLatLng.lat, lng: currentLatLng.lng, title, text, photo: pendingPhoto, songName: document.getElementById('fSongName').value.trim(), songUrl: document.getElementById('fSongUrl').value.trim() });
+    memories.push({ 
+      id: Date.now().toString(), 
+      lat: currentLatLng.lat, 
+      lng: currentLatLng.lng, 
+      title, text, photo: pendingPhoto, 
+      songName: document.getElementById('fSongName').value.trim(), 
+      songUrl: document.getElementById('fSongUrl').value.trim() 
+    });
   }
-  renderMarkers(); closeForm();
+  renderMarkers(); 
+  closeForm();
 });
 
 document.getElementById('dDelete').addEventListener('click', function() {
